@@ -2,7 +2,8 @@ import sys
 import os
 import mimetypes
 from pprint import pprint
-import subprocess
+import magic
+import shutil
 
 usage = sys.argv[0] + " CORRUPTED_PATH(s) RECOVER_FOLDER"
 
@@ -11,15 +12,20 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 def getMime(file):
-    res = subprocess.check_output(["/usr/bin/file", "-b", "--mime-type", file],universal_newlines=True)
-    return res[:len(res)-1]
+    return magic.from_file(file, mime=True)
 
 def getExt(mime):
     return mimetypes.guess_extension(mime)
+
 corrPaths = []
-recoverPath = sys.argv[len(sys.argv)-1]
+recoverPath = sys.argv[-1]
 
 stats = {}
+
+try:
+    os.makedirs(recoverPath)
+except OSError, e:
+    pass
 
 for i in range(1,len(sys.argv)-1):
     if not os.path.isdir(sys.argv[i]):
@@ -35,9 +41,11 @@ for folder in corrPaths:
         if mime not in stats:
             stats[mime] = 1
         else:
-            stats[mime] = stats[mime]+1     
-        print "    file: {} ext:{} ({})".format(file,ext,mime)
+            stats[mime] = stats[mime]+1
+        if not ext:
+            ext = "bho"
+        fileDst = os.path.join(recoverPath,f[:-4]+ext)
+        print "    file: {} ({}) to {}".format(file,mime,fileDst)
+        shutil.copyfile(file,fileDst)
 
 pprint( stats )
-
-
